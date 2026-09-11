@@ -402,6 +402,7 @@
                 <span class="text-xs font-bold text-slate-800 block">Pre-Order Customer Details:</span>
                 <input type="text" x-model="customer.name" placeholder="Nama Pemesan *" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-slate-400">
                 <input type="text" x-model="customer.phone" placeholder="Nomor WhatsApp (08xxxxxxxxxx)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-slate-400">
+                <textarea x-model="customer.notes" rows="2" placeholder="Keterangan / Catatan PO (opsional)" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-slate-400 resize-none"></textarea>
             </div>
 
             <!-- Channel / Promo Status Card (Matching Dribbble Promo Banner) -->
@@ -633,6 +634,10 @@
                             <label class="text-[10px] text-slate-500 uppercase block mb-1 font-semibold">Estimasi Ambil</label>
                             <input type="date" x-model="customer.pickup_date" class="w-full bg-white border border-slate-200 rounded-xl px-2 py-2 text-xs text-slate-900">
                         </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-500 uppercase block mb-1 font-semibold">Keterangan / Catatan PO</label>
+                        <textarea x-model="customer.notes" rows="2" placeholder="Catatan pesanan, titip teman, request khusus, dll." class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-slate-400 resize-none"></textarea>
                     </div>
                 </div>
 
