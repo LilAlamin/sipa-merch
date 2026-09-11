@@ -10,6 +10,7 @@ Route::get('/history', [PosController::class, 'history'])->name('pos.history');
 Route::get('/history/export', [PosController::class, 'exportExcel'])->name('pos.history.export');
 Route::patch('/orders/{order}/status', [PosController::class, 'updateStatus'])->name('pos.orders.status');
 Route::get('/orders/{order}/invoice', [PosController::class, 'invoice'])->name('pos.invoice');
+Route::get('/struk/{order}', [PosController::class, 'publicReceipt'])->name('pos.receipt.public');
 
 Route::get('/settings', [SettingController::class, 'index'])->name('pos.settings');
 Route::post('/settings/products', [SettingController::class, 'store'])->name('pos.settings.products.store');

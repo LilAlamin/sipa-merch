@@ -217,17 +217,26 @@ test('invoice view displays order slip with itemized breakdown', function () {
         'subtotal_cost' => 14000,
     ]);
 
+    // 1. Cashier view opened from POS
     $response = $this->get(route('pos.invoice', $order));
-
     $response->assertOk();
     $response->assertSee('#SIPA-OTS-260911-003');
     $response->assertSee('Ganci 2');
     $response->assertSee('20.000');
     $response->assertSee('Kembalian');
     $response->assertSee('30.000');
-    $response->assertSee('Download Struk PDF');
-    $response->assertDontSee('Kembali ke Kasir');
-    $response->assertDontSee('+ Transaksi Baru');
+    $response->assertSee('Kembali ke Kasir');
+    $response->assertSee('+ Transaksi Baru');
+    $response->assertSee('Kirim Invoice via WhatsApp');
+
+    // 2. Public customer receipt link sent via WhatsApp
+    $publicResponse = $this->get(route('pos.receipt.public', $order));
+    $publicResponse->assertOk();
+    $publicResponse->assertSee('#SIPA-OTS-260911-003');
+    $publicResponse->assertSee('Pura Mangkunegaran, Solo');
+    $publicResponse->assertSee('Download Struk PDF');
+    $publicResponse->assertDontSee('Kembali ke Kasir');
+    $publicResponse->assertDontSee('+ Transaksi Baru');
 });
 
 test('history page defaults to today and filters accurately by channel and specific dates', function () {

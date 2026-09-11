@@ -447,6 +447,32 @@ class PosController extends Controller
     }
 
     /**
+     * Display public, standalone e-receipt for customers (accessible via WhatsApp link without POS menu).
+     */
+    public function publicReceipt(Order $order): View
+    {
+        $order->load('items.product');
+
+        $waText = $this->generateWhatsAppReceiptText($order);
+
+        $cleanPhone = preg_replace('/[^0-9]/', '', (string) $order->customer_phone);
+        if ($cleanPhone && str_starts_with($cleanPhone, '0')) {
+            $cleanPhone = '62'.substr($cleanPhone, 1);
+        }
+
+        $waUrl = $cleanPhone
+            ? 'https://api.whatsapp.com/send?phone='.$cleanPhone.'&text='.rawurlencode($waText)
+            : 'https://api.whatsapp.com/send?text='.rawurlencode($waText);
+
+        $logoPath = public_path('images/sipa-logo.png');
+        $logoBase64 = file_exists($logoPath)
+            ? 'data:image/png;base64,'.base64_encode(file_get_contents($logoPath))
+            : asset('images/sipa-logo.png');
+
+        return view('pos.public-receipt', compact('order', 'waText', 'waUrl', 'logoBase64'));
+    }
+
+    /**
      * Helper to generate clean, formatted WhatsApp invoice text.
      */
     private function generateWhatsAppReceiptText(Order $order): string
@@ -499,12 +525,12 @@ class PosController extends Controller
             $lines[] = 'Catatan    : '.$order->customer_notes;
         }
 
-        // Only include invoice URL if not localhost/127.0.0.1, because localhost cannot be accessed by customer and triggers WhatsApp Web forwarder bug
+        // Only include invoice URL if not localhost/127.0.0.1, pointing to the secure public customer receipt
         $host = request()->getHost();
         if (! in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'])) {
             $lines[] = '----------------------------------------';
             $lines[] = '🔗 *Lihat / Unduh Struk Digital:*';
-            $lines[] = route('pos.invoice', $order);
+            $lines[] = route('pos.receipt.public', $order);
         }
 
         $lines[] = '----------------------------------------';
