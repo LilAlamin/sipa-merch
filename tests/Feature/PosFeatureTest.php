@@ -225,7 +225,9 @@ test('invoice view displays order slip with itemized breakdown', function () {
     $response->assertSee('20.000');
     $response->assertSee('Kembalian');
     $response->assertSee('30.000');
-    $response->assertSee('Kirim Invoice via WhatsApp');
+    $response->assertSee('Download Struk PDF');
+    $response->assertDontSee('Kembali ke Kasir');
+    $response->assertDontSee('+ Transaksi Baru');
 });
 
 test('history page defaults to today and filters accurately by channel and specific dates', function () {

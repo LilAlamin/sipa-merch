@@ -1,29 +1,57 @@
-@extends('layouts.pos')
+<!DOCTYPE html>
+<html lang="id" class="h-full bg-[#0b0f17]">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Struk Digital Resmi #{{ $order->order_number }} - SIPA Festival 2026</title>
 
-@section('title', 'Invoice Digital - #' . $order->order_number)
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
-@section('content')
-<div class="flex-1 bg-slate-100 p-4 sm:p-6 lg:p-8 flex flex-col items-center justify-center min-h-[calc(100vh-4rem)] overflow-y-auto">
-    
-    <!-- Action Bar (Hidden on Print) -->
-    <div class="w-full max-w-[360px] mb-3 flex items-center justify-between no-print">
-        <a href="{{ route('pos.index') }}" class="flex items-center gap-1 text-xs font-semibold text-slate-600 hover:text-slate-900 transition-colors">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-            <span>Kembali ke Kasir</span>
-        </a>
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
 
-        <span class="px-2 py-0.5 rounded text-[11px] font-mono font-semibold bg-white text-slate-600 border border-slate-200">
-            Slip 58/80mm
-        </span>
+    <style>
+        @media print {
+            body { 
+                background: white !important; 
+                padding: 0 !important; 
+                color: black !important;
+            }
+            .no-print { 
+                display: none !important; 
+            }
+            #thermal-invoice-slip {
+                box-shadow: none !important;
+                border: none !important;
+                padding: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+            }
+        }
+    </style>
+</head>
+<body class="min-h-full bg-[#0b0f17] text-slate-100 font-sans antialiased py-6 sm:py-10 px-4 flex flex-col items-center justify-center selection:bg-[#e63946] selection:text-white">
+
+    <!-- Public Brand Header (Customer Facing) -->
+    <div class="w-full max-w-[380px] mb-4 text-center no-print space-y-2">
+        <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-900 border border-slate-800 text-xs text-slate-300">
+            <span class="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <span class="font-bold tracking-tight">SIPA FESTIVAL 2026</span>
+            <span class="text-slate-600">•</span>
+            <span class="text-[11px] text-slate-400">Bukti Transaksi Resmi</span>
+        </div>
     </div>
 
     <!-- The Compact Thermal Invoice Slip -->
-    <div id="thermal-invoice-slip" class="thermal-receipt-container w-full max-w-[360px] bg-white text-slate-900 rounded-xl shadow-md p-5 sm:p-6 border border-slate-200 font-sans text-xs">
+    <div id="thermal-invoice-slip" class="thermal-receipt-container w-full max-w-[380px] bg-white text-slate-900 rounded-2xl shadow-2xl p-6 sm:p-7 border border-slate-200 font-sans text-xs">
         
         <!-- Header with Official SIPA Logo -->
         <div class="text-center pb-3 border-b border-dashed border-slate-300">
-            <img src="{{ $logoBase64 ?? asset('images/sipa-logo.png') }}" alt="SIPA Logo" class="h-10 mx-auto object-contain mb-1">
-            <p class="text-[10px] text-slate-500 font-semibold tracking-wider uppercase">Official Merchandise Slip</p>
+            <img src="{{ $logoBase64 ?? asset('images/sipa-logo.png') }}" alt="SIPA Logo" class="h-11 mx-auto object-contain mb-1.5">
+            <p class="text-[10px] text-slate-500 font-bold tracking-wider uppercase">Official Merchandise Slip</p>
             <div class="mt-1.5 inline-block px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider {{ $order->channel === 'ots' ? 'bg-[#e63946]/15 text-[#e63946] border border-[#e63946]/30' : 'bg-purple-100 text-purple-800' }}">
                 {{ $order->channel === 'ots' ? 'Transaksi On The Spot' : 'Transaksi Pre-Order' }}
             </div>
@@ -139,102 +167,90 @@
     <!-- Hidden Raw Text for Clipboard & Sharing -->
     <textarea id="wa-receipt-text" class="hidden" readonly>{{ $waText }}</textarea>
 
-    <!-- Practical Action Buttons (No-print) -->
-    <div class="w-full max-w-[360px] mt-3 flex flex-col gap-2 no-print" x-data="invoiceActions()">
+    <!-- Customer Actions (No POS Navigation Links) -->
+    <div class="w-full max-w-[380px] mt-4 flex flex-col gap-2.5 no-print" x-data="invoiceActions()">
         
-        <!-- Primary Action: Copy Image to Clipboard for 1-Click Paste in WhatsApp -->
+        <!-- Primary Action: Download PDF -->
         <button type="button" 
-                @click="copyReceiptImage()"
-                :disabled="isCopyingImg"
-                class="w-full py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition-all active:scale-[0.99] cursor-pointer">
-            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-            <span x-text="copiedImg ? '✓ Gambar Struk Tersalin! Paste (Ctrl+V) di WA' : 'Salin Gambar Struk (Paste di WA)'">Salin Gambar Struk (Paste di WA)</span>
+                @click="handleDownloadPdf()"
+                :disabled="isExportingPdf"
+                class="w-full py-2.5 rounded-xl bg-[#e63946] hover:bg-[#d62828] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-[#e63946]/25 transition-all active:scale-[0.99] cursor-pointer">
+            <svg x-show="!isExportingPdf" class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
+            <svg x-cloak x-show="isExportingPdf" class="w-4 h-4 animate-spin text-white" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+            <span x-text="isExportingPdf ? 'Sedang Memproses PDF...' : 'Download Struk PDF'">Download Struk PDF</span>
         </button>
 
-        <!-- WhatsApp Direct Link -->
-        <a href="{{ $waUrl }}" 
-           target="_blank" 
-           rel="noopener noreferrer"
-           class="w-full py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-semibold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer">
-            <svg class="w-3.5 h-3.5 text-emerald-600" fill="currentColor" viewBox="0 0 24 24"><path d="M.057 24l1.687-6.163c-1.041-1.804-1.588-3.849-1.587-5.946.003-6.556 5.338-11.891 11.893-11.891 3.181.001 6.167 1.24 8.413 3.488 2.245 2.248 3.481 5.236 3.48 8.414-.003 6.557-5.338 11.892-11.893 11.892-1.99-.001-3.951-.5-5.688-1.448l-6.305 1.654zm6.597-3.807c1.676.995 3.276 1.591 5.392 1.592 5.448 0 9.886-4.434 9.889-9.885.002-5.462-4.415-9.89-9.881-9.892-5.452 0-9.887 4.434-9.889 9.884-.001 2.225.651 3.891 1.746 5.634l-.999 3.648 3.742-.981zm11.387-5.464c-.074-.124-.272-.198-.57-.347-.297-.149-1.758-.868-2.031-.967-.272-.099-.47-.149-.669.149-.198.297-.768.967-.941 1.165-.173.198-.347.223-.644.074-.297-.149-1.255-.462-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.297-.347.446-.521.151-.172.2-.296.3-.495.099-.198.05-.372-.025-.521-.075-.148-.669-1.611-.916-2.206-.242-.579-.487-.501-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.076 4.487.709.306 1.263.489 1.694.626.712.226 1.36.194 1.872.118.571-.085 1.758-.719 2.006-1.413.248-.695.248-1.29.173-1.414z"/></svg>
-            <span>Kirim Invoice via WhatsApp</span>
-        </a>
-
-        <!-- Secondary Actions: PDF & PNG Download -->
+        <!-- Secondary Actions Grid: Simpan Gambar, Cetak, Salin -->
         <div class="grid grid-cols-2 gap-2">
-            <!-- Download PDF Button -->
-            <button type="button" 
-                    @click="handleDownloadPdf()"
-                    :disabled="isExportingPdf"
-                    class="py-2.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-semibold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition-colors disabled:opacity-50 cursor-pointer">
-                <svg x-show="!isExportingPdf" class="w-3.5 h-3.5 text-rose-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path></svg>
-                <svg x-cloak x-show="isExportingPdf" class="w-3.5 h-3.5 animate-spin text-rose-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span x-text="isExportingPdf ? 'Memproses PDF...' : 'Download PDF'">Download PDF</span>
-            </button>
-
-            <!-- Download PNG Image Button -->
+            <!-- Simpan Gambar PNG -->
             <button type="button" 
                     @click="handleDownloadImage()"
                     :disabled="isExportingImg"
-                    class="py-2.5 rounded-xl bg-white hover:bg-slate-50 text-slate-800 font-semibold text-xs flex items-center justify-center gap-1.5 border border-slate-300 shadow-2xs transition-colors disabled:opacity-50 cursor-pointer">
-                <svg x-show="!isExportingImg" class="w-3.5 h-3.5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                <svg x-cloak x-show="isExportingImg" class="w-3.5 h-3.5 animate-spin text-blue-500" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                <span x-text="isExportingImg ? 'Memproses...' : 'Simpan Gambar'">Simpan Gambar</span>
+                    class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition-colors disabled:opacity-50 cursor-pointer">
+                <svg x-show="!isExportingImg" class="w-3.5 h-3.5 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                <svg x-cloak x-show="isExportingImg" class="w-3.5 h-3.5 animate-spin text-blue-400" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
+                <span x-text="isExportingImg ? 'Menyimpan...' : 'Simpan Gambar'">Simpan Gambar</span>
             </button>
-        </div>
 
-        <!-- Print Thermal & Copy Text Buttons -->
-        <div class="grid grid-cols-2 gap-2">
-            <!-- Print Thermal Button -->
+            <!-- Cetak Struk -->
             <button type="button" 
                     onclick="window.print()"
-                    class="py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer">
-                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
+                    class="py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-semibold text-xs flex items-center justify-center gap-1.5 border border-slate-700 transition-colors cursor-pointer">
+                <svg class="w-3.5 h-3.5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"></path></svg>
                 <span>Cetak Struk</span>
-            </button>
-
-            <!-- Copy Text Button -->
-            <button type="button" 
-                    @click="copyWaText()"
-                    class="py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center gap-1 transition-colors cursor-pointer">
-                <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
-                <span x-text="copied ? '✓ Tersalin' : 'Salin Teks'">Salin Teks</span>
             </button>
         </div>
 
-        <a href="{{ route('pos.index') }}" 
-           class="w-full py-2.5 mt-1 rounded-xl bg-[#e63946] hover:bg-[#d62828] text-white font-bold text-xs text-center shadow-md shadow-[#e63946]/20 transition-all active:scale-[0.99]">
-            + Transaksi Baru
-        </a>
+        <!-- Optional: Salin Teks / Bagikan -->
+        <button type="button" 
+                @click="copyWaText()"
+                class="w-full py-2 rounded-xl bg-slate-900 hover:bg-slate-850 text-slate-400 hover:text-white font-medium text-xs flex items-center justify-center gap-1.5 border border-slate-800 transition-colors cursor-pointer">
+            <svg class="w-3.5 h-3.5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path></svg>
+            <span x-text="copied ? '✓ Teks Rincian Tersalin!' : 'Salin Teks Ringkasan'">Salin Teks Ringkasan</span>
+        </button>
 
     </div>
 
-</div>
+    <!-- Official Event Footer -->
+    <div class="mt-8 text-center text-slate-500 text-[11px] font-sans no-print space-y-1">
+        <p class="font-semibold text-slate-400">Solo International Performing Arts (SIPA) Festival 2026</p>
+        <p>Panggung Terbuka Benteng Vastenburg, Surakarta • Official Merchandise</p>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div x-data="{
+        toasts: [],
+        addToast(msg, type = 'success') {
+            const id = Date.now();
+            this.toasts.push({ id, msg, type });
+            setTimeout(() => this.removeToast(id), 3500);
+        },
+        removeToast(id) {
+            this.toasts = this.toasts.filter(t => t.id !== id);
+        }
+    }" 
+    @show-toast.window="addToast($event.detail.message, $event.detail.type || 'success')"
+    class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none no-print">
+        <template x-for="toast in toasts" :key="toast.id">
+            <div x-transition:enter="transition ease-out duration-200 transform"
+                 x-transition:enter-start="opacity-0 translate-y-2 scale-95"
+                 x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+                 x-transition:leave="transition ease-in duration-150 transform"
+                 x-transition:leave-start="opacity-100 scale-100"
+                 x-transition:leave-end="opacity-0 scale-95"
+                 class="pointer-events-auto px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5 border text-xs sm:text-sm font-semibold bg-[#13161b] border-slate-700 text-white">
+                <svg class="w-4 h-4 text-emerald-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M5 13l4 4L19 7"></path></svg>
+                <span x-text="toast.msg"></span>
+            </div>
+        </template>
+    </div>
 
 <script>
 function invoiceActions() {
     return {
         copied: false,
-        copiedImg: false,
-        isCopyingImg: false,
         isExportingPdf: false,
         isExportingImg: false,
-        async copyReceiptImage() {
-            this.isCopyingImg = true;
-            try {
-                if (typeof window.copyReceiptAsImage === 'function') {
-                    const ok = await window.copyReceiptAsImage('thermal-invoice-slip');
-                    if (ok) {
-                        this.copiedImg = true;
-                        setTimeout(() => this.copiedImg = false, 3500);
-                    }
-                }
-            } catch (e) {
-                console.error(e);
-            } finally {
-                this.isCopyingImg = false;
-            }
-        },
         async handleDownloadPdf() {
             this.isExportingPdf = true;
             try {
@@ -285,4 +301,6 @@ function invoiceActions() {
     };
 }
 </script>
-@endsection
+
+</body>
+</html>
