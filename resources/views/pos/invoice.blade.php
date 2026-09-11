@@ -13,7 +13,7 @@
         </a>
 
         <div class="flex items-center gap-2">
-            <a href="{{ route('pos.receipt.public', $order) }}" 
+            <a href="{{ Route::has('pos.receipt.public') ? route('pos.receipt.public', $order) : url('/struk/' . $order->id) }}" 
                target="_blank" 
                title="Buka tampilan struk khusus pelanggan (tanpa menu POS)"
                class="px-2 py-0.5 rounded text-[11px] font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors">

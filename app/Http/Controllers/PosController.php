@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -530,7 +531,9 @@ class PosController extends Controller
         if (! in_array($host, ['localhost', '127.0.0.1', '::1', '0.0.0.0'])) {
             $lines[] = '----------------------------------------';
             $lines[] = '🔗 *Lihat / Unduh Struk Digital:*';
-            $lines[] = route('pos.receipt.public', $order);
+            $lines[] = Route::has('pos.receipt.public')
+                ? route('pos.receipt.public', $order)
+                : url('/struk/'.$order->id);
         }
 
         $lines[] = '----------------------------------------';
