@@ -214,7 +214,7 @@
     <!-- Official Event Footer -->
     <div class="mt-8 text-center text-slate-500 text-[11px] font-sans no-print space-y-1">
         <p class="font-semibold text-slate-400">Solo International Performing Arts (SIPA) Festival 2026</p>
-        <p>Panggung Terbuka Benteng Vastenburg, Surakarta • Official Merchandise</p>
+        <p>Pura Mangkunegaran, Solo • Official Merchandise</p>
     </div>
 
     <!-- Toast Notification Container -->
