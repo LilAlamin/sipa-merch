@@ -2,6 +2,7 @@
 
 use App\Models\Order;
 use App\Models\Product;
+use Carbon\Carbon;
 use Database\Seeders\ProductSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 
@@ -16,7 +17,7 @@ test('pos terminal page loads successfully with seeded products', function () {
 
     $response->assertOk();
     $response->assertViewHas('products', function ($products) {
-        return $products->count() === 8;
+        return $products->count() === 9;
     });
     $response->assertSee('Kaos');
     $response->assertSee('Ganci');
@@ -225,4 +226,99 @@ test('invoice view displays order slip with itemized breakdown', function () {
     $response->assertSee('Kembalian');
     $response->assertSee('30.000');
     $response->assertSee('Kirim Invoice via WhatsApp');
+});
+
+test('history page defaults to today and filters accurately by channel and specific dates', function () {
+    $todayOrder = Order::create([
+        'order_number' => 'SIPA-OTS-TODAY',
+        'channel' => 'ots',
+        'customer_name' => 'Doni',
+        'total_cost' => 10000,
+        'total_price' => 15000,
+        'profit' => 5000,
+        'payment_method' => 'cash',
+        'payment_status' => 'paid',
+        'amount_paid' => 15000,
+        'change_amount' => 0,
+        'order_status' => 'completed',
+        'created_at' => Carbon::today()->setTime(10, 0),
+    ]);
+
+    $pastOrder = Order::create([
+        'order_number' => 'SIPA-PO-PAST',
+        'channel' => 'po',
+        'customer_name' => 'Maya',
+        'total_cost' => 20000,
+        'total_price' => 30000,
+        'profit' => 10000,
+        'payment_method' => 'qris',
+        'payment_status' => 'paid',
+        'amount_paid' => 30000,
+        'change_amount' => 0,
+        'order_status' => 'completed',
+    ]);
+    $pastOrder->created_at = Carbon::yesterday()->setTime(14, 0);
+    $pastOrder->saveQuietly();
+
+    // Default visit (should default to today)
+    $response = $this->get(route('pos.history'));
+    $response->assertOk();
+    $response->assertSee('SIPA-OTS-TODAY');
+    $response->assertDontSee('SIPA-PO-PAST');
+    $response->assertSee('Export Excel');
+
+    // Filter by yesterday
+    $yesterdayResponse = $this->get(route('pos.history', ['date' => 'yesterday']));
+    $yesterdayResponse->assertOk();
+    $yesterdayResponse->assertSee('SIPA-PO-PAST');
+    $yesterdayResponse->assertDontSee('SIPA-OTS-TODAY');
+
+    // Filter by all
+    $allResponse = $this->get(route('pos.history', ['date' => 'all']));
+    $allResponse->assertOk();
+    $allResponse->assertSee('SIPA-OTS-TODAY');
+    $allResponse->assertSee('SIPA-PO-PAST');
+
+    // Filter by specific date string
+    $specificDate = Carbon::yesterday()->toDateString();
+    $specificResponse = $this->get(route('pos.history', ['date' => $specificDate]));
+    $specificResponse->assertOk();
+    $specificResponse->assertSee('SIPA-PO-PAST');
+    $specificResponse->assertDontSee('SIPA-OTS-TODAY');
+});
+
+test('pos sales report can be exported to styled excel spreadsheet', function () {
+    $order = Order::create([
+        'order_number' => 'SIPA-OTS-EXP-001',
+        'channel' => 'ots',
+        'customer_name' => 'Fani',
+        'customer_phone' => '08987654321',
+        'customer_notes' => 'Catatan khusus',
+        'total_cost' => 75000,
+        'total_price' => 110000,
+        'profit' => 35000,
+        'payment_method' => 'qris',
+        'payment_status' => 'paid',
+        'amount_paid' => 110000,
+        'change_amount' => 0,
+        'order_status' => 'completed',
+        'created_at' => Carbon::today(),
+    ]);
+
+    $order->items()->create([
+        'product_name' => 'Kaos SIPA Festival',
+        'cost_price' => 75000,
+        'unit_price' => 110000,
+        'quantity' => 1,
+        'subtotal' => 110000,
+        'subtotal_cost' => 75000,
+        'variant' => 'L',
+    ]);
+
+    $response = $this->get(route('pos.history.export', ['date' => 'today']));
+
+    $response->assertOk();
+    $response->assertHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+    expect($response->headers->get('Content-Disposition'))->toContain('attachment; filename="Laporan_Penjualan_SIPA_Merch_');
+    expect($response->headers->get('Content-Disposition'))->toContain('.xlsx');
 });

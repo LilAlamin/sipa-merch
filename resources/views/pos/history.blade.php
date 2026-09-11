@@ -11,15 +11,30 @@
             
             <div class="flex items-center gap-3">
                 <div>
-                    <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Riwayat & Rekap Penjualan</h1>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <h1 class="text-xl sm:text-2xl font-extrabold text-slate-900 tracking-tight">Riwayat & Rekap Penjualan</h1>
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                            <svg class="w-3.5 h-3.5 text-slate-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            <span>{{ $periodLabel }}</span>
+                        </span>
+                    </div>
                     <p class="text-xs text-slate-400 mt-0.5">Laporan per item, omset transaksi kasir, dan status pesanan Pre-Order.</p>
                 </div>
             </div>
 
-            <!-- Right Button: + Transaksi Baru (Lime-Green Accent) -->
-            <div class="flex items-center gap-3">
+            <!-- Right Buttons: Export Excel & + Transaksi Baru -->
+            <div class="flex items-center gap-2.5">
+                <a href="{{ route('pos.history.export', request()->query()) }}" 
+                   class="px-3.5 sm:px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-emerald-600/20 transition-all active:scale-[0.99]"
+                   title="Unduh Laporan & Rekap Penjualan Berdesain (.xlsx)">
+                    <svg class="w-4 h-4 text-emerald-100" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM6 4h7v5h5v11H6V4zm8 9.5l2 3h-1.5l-1.2-2-1.2 2H10.5l2-3-1.8-2.5h1.5l1.1 1.7 1.1-1.7h1.5L14 13.5z"/>
+                    </svg>
+                    <span>Export Excel</span>
+                </a>
+
                 <a href="{{ route('pos.index') }}" 
-                   class="px-4 py-2 rounded-xl bg-[#e63946] hover:bg-[#d62828] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-[#e63946]/20 transition-all active:scale-[0.99]">
+                   class="px-3.5 sm:px-4 py-2 rounded-xl bg-[#e63946] hover:bg-[#d62828] text-white font-bold text-xs sm:text-sm flex items-center gap-1.5 shadow-md shadow-[#e63946]/20 transition-all active:scale-[0.99]">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M12 4v16m8-8H4"></path></svg>
                     <span>+ Transaksi Baru</span>
                 </a>
@@ -83,12 +98,12 @@
                     <span class="w-2 h-2 rounded-full bg-purple-500"></span>
                 </div>
                 <div class="flex items-center gap-2 font-mono font-bold text-base sm:text-lg">
-                    <span class="px-2 py-0.5 rounded-lg bg-[#f4f5f7] text-slate-900">{{ $orders->where('channel', 'ots')->count() }} OTS</span>
+                    <span class="px-2 py-0.5 rounded-lg bg-[#f4f5f7] text-slate-900">{{ $otsCount }} OTS</span>
                     <span class="text-slate-300">/</span>
-                    <span class="px-2 py-0.5 rounded-lg bg-[#f4f5f7] text-purple-700">{{ $orders->where('channel', 'po')->count() }} PO</span>
+                    <span class="px-2 py-0.5 rounded-lg bg-[#f4f5f7] text-purple-700">{{ $poCount }} PO</span>
                 </div>
                 <div class="text-[11px] text-slate-400 mt-1">
-                    Pada transaksi aktif
+                    Pada periode terpilih
                 </div>
             </div>
 
@@ -129,11 +144,11 @@
             @endif
         </div>
 
-        <!-- 3. Filter Bar (Matching Outvetch Category Pills) -->
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+        <!-- 3. Filter Bar (Matching Outvetch Category Pills & Date Picker) -->
+        <div class="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3">
             
             <!-- Channel Filter Pills -->
-            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0">
+            <div class="flex items-center gap-1.5 overflow-x-auto pb-1 xl:pb-0">
                 <a href="{{ route('pos.history', array_merge(request()->query(), ['channel' => 'all'])) }}"
                    class="px-4 py-1.5 rounded-full border text-xs font-bold transition-all whitespace-nowrap {{ $channel === 'all' ? 'bg-white text-slate-900 border-slate-300 shadow-xs' : 'bg-transparent text-slate-500 hover:text-slate-900 border-transparent' }}">
                     Semua Transaksi
@@ -148,16 +163,34 @@
                 </a>
             </div>
 
-            <!-- Date Selector & Search Form -->
-            <form method="GET" action="{{ route('pos.history') }}" class="flex items-center gap-2">
+            <!-- Date Selector, Calendar Picker & Search Form -->
+            <form method="GET" action="{{ route('pos.history') }}" class="flex flex-wrap items-center gap-2">
                 <input type="hidden" name="channel" value="{{ $channel }}">
 
-                <select name="date" onchange="this.form.submit()" class="bg-white border border-slate-200/90 rounded-full px-3.5 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-slate-400 shadow-2xs">
-                    <option value="all" {{ $dateFilter === 'all' ? 'selected' : '' }}>Semua Tanggal</option>
+                <!-- Quick Period Dropdown -->
+                <select name="date" id="dateSelect" onchange="if(this.value !== 'custom') this.form.submit()" class="bg-white border border-slate-200/90 rounded-full px-3.5 py-1.5 text-xs text-slate-700 font-semibold focus:outline-none focus:border-slate-400 shadow-2xs">
                     <option value="today" {{ $dateFilter === 'today' ? 'selected' : '' }}>Hari Ini</option>
+                    <option value="yesterday" {{ $dateFilter === 'yesterday' ? 'selected' : '' }}>Kemarin</option>
+                    <option value="week" {{ $dateFilter === 'week' ? 'selected' : '' }}>7 Hari Terakhir</option>
+                    <option value="month" {{ $dateFilter === 'month' ? 'selected' : '' }}>Bulan Ini</option>
+                    <option value="all" {{ $dateFilter === 'all' ? 'selected' : '' }}>Semua Tanggal</option>
+                    @if(!in_array($dateFilter, ['today', 'yesterday', 'week', 'month', 'all']))
+                        <option value="{{ $dateFilter }}" selected>Tanggal: {{ $dateFilter }}</option>
+                    @endif
                 </select>
 
-                <div class="relative flex-1 sm:w-64">
+                <!-- Calendar Date Picker (HTML5 Date Input) -->
+                <div class="relative flex items-center">
+                    <input type="date" 
+                           id="customDatePicker"
+                           value="{{ !in_array($dateFilter, ['today', 'yesterday', 'week', 'month', 'all']) ? $dateFilter : '' }}"
+                           onchange="if(this.value) { const sel = document.getElementById('dateSelect'); let opt = sel.querySelector('option[value=\'' + this.value + '\']'); if(!opt){ opt = document.createElement('option'); opt.value = this.value; opt.text = 'Tanggal: ' + this.value; sel.appendChild(opt); } sel.value = this.value; this.form.submit(); }"
+                           title="Pilih tanggal spesifik dari kalender"
+                           class="bg-white border border-slate-200/90 rounded-full px-3 py-1.5 text-xs text-slate-700 font-medium focus:outline-none focus:border-slate-400 shadow-2xs cursor-pointer">
+                </div>
+
+                <!-- Search Input -->
+                <div class="relative flex-1 sm:w-56">
                     <input type="text" 
                            name="search" 
                            value="{{ $search }}" 

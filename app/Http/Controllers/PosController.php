@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exports\SalesExcelExport;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Product;
@@ -11,6 +12,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PosController extends Controller
 {
@@ -181,9 +183,84 @@ class PosController extends Controller
     public function history(Request $request): View
     {
         $channel = $request->query('channel', 'all');
-        $dateFilter = $request->query('date', 'all');
+        $dateFilter = $request->query('date', 'today');
         $search = $request->query('search');
 
+        $query = $this->buildFilteredOrdersQuery($channel, $dateFilter, $search);
+        $orders = (clone $query)->paginate(15)->withQueryString();
+
+        // Calculate summary metrics based on current filters
+        $metricQuery = $this->buildMetricQuery($channel, $dateFilter, $search);
+
+        $totalRevenue = (clone $metricQuery)->sum('total_price');
+        $totalCost = (clone $metricQuery)->sum('total_cost');
+        $totalProfit = (clone $metricQuery)->sum('profit');
+        $totalOrdersCount = (clone $metricQuery)->count();
+        $otsCount = (clone $metricQuery)->where('channel', 'ots')->count();
+        $poCount = (clone $metricQuery)->where('channel', 'po')->count();
+
+        // Item sales recap (quantity sold per product)
+        $itemSalesRecap = $this->getItemSalesRecap($channel, $dateFilter, $search);
+        $totalItemsSold = $itemSalesRecap->sum('total_qty');
+        $periodLabel = $this->getDatePeriodLabel($dateFilter);
+
+        return view('pos.history', compact(
+            'orders',
+            'totalRevenue',
+            'totalCost',
+            'totalProfit',
+            'totalOrdersCount',
+            'totalItemsSold',
+            'otsCount',
+            'poCount',
+            'itemSalesRecap',
+            'channel',
+            'dateFilter',
+            'search',
+            'periodLabel'
+        ));
+    }
+
+    /**
+     * Export the filtered POS report to a styled Excel spreadsheet.
+     */
+    public function exportExcel(Request $request): StreamedResponse
+    {
+        $channel = $request->query('channel', 'all');
+        $dateFilter = $request->query('date', 'today');
+        $search = $request->query('search');
+
+        $orders = $this->buildFilteredOrdersQuery($channel, $dateFilter, $search)->get();
+        $metricQuery = $this->buildMetricQuery($channel, $dateFilter, $search);
+
+        $metrics = [
+            'totalRevenue' => (int) (clone $metricQuery)->sum('total_price'),
+            'totalCost' => (int) (clone $metricQuery)->sum('total_cost'),
+            'totalProfit' => (int) (clone $metricQuery)->sum('profit'),
+            'totalOrdersCount' => (int) (clone $metricQuery)->count(),
+            'totalItemsSold' => (int) $this->getItemSalesRecap($channel, $dateFilter, $search)->sum('total_qty'),
+            'otsCount' => (int) (clone $metricQuery)->where('channel', 'ots')->count(),
+            'poCount' => (int) (clone $metricQuery)->where('channel', 'po')->count(),
+        ];
+
+        $itemSalesRecap = $this->getItemSalesRecap($channel, $dateFilter, $search);
+        $periodLabel = $this->getDatePeriodLabel($dateFilter);
+
+        $filters = [
+            'channel' => $channel,
+            'dateFilter' => $dateFilter,
+            'periodLabel' => $periodLabel,
+            'search' => $search,
+        ];
+
+        return SalesExcelExport::download($orders, $itemSalesRecap, $metrics, $filters);
+    }
+
+    /**
+     * Build filtered orders query with items and product relations.
+     */
+    private function buildFilteredOrdersQuery(string $channel, string $dateFilter, ?string $search)
+    {
         $query = Order::with('items.product')->latest();
 
         if ($channel === 'ots') {
@@ -192,11 +269,7 @@ class PosController extends Controller
             $query->po();
         }
 
-        if ($dateFilter === 'today') {
-            $query->today();
-        } elseif ($dateFilter && $dateFilter !== 'all') {
-            $query->whereDate('created_at', $dateFilter);
-        }
+        $this->applyDateFilter($query, $dateFilter);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -206,53 +279,115 @@ class PosController extends Controller
             });
         }
 
-        $orders = $query->paginate(15)->withQueryString();
+        return $query;
+    }
 
-        // Calculate summary metrics based on current filters
+    /**
+     * Build base query for summary metric calculations.
+     */
+    private function buildMetricQuery(string $channel, string $dateFilter, ?string $search)
+    {
         $metricQuery = Order::query();
+
         if ($channel === 'ots') {
             $metricQuery->ots();
         } elseif ($channel === 'po') {
             $metricQuery->po();
         }
-        if ($dateFilter === 'today') {
-            $metricQuery->today();
-        } elseif ($dateFilter && $dateFilter !== 'all') {
-            $metricQuery->whereDate('created_at', $dateFilter);
+
+        $this->applyDateFilter($metricQuery, $dateFilter);
+
+        if ($search) {
+            $metricQuery->where(function ($q) use ($search) {
+                $q->where('order_number', 'like', "%{$search}%")
+                    ->orWhere('customer_name', 'like', "%{$search}%")
+                    ->orWhere('customer_phone', 'like', "%{$search}%");
+            });
         }
 
-        $totalRevenue = (clone $metricQuery)->sum('total_price');
-        $totalCost = (clone $metricQuery)->sum('total_cost');
-        $totalProfit = (clone $metricQuery)->sum('profit');
-        $totalOrdersCount = (clone $metricQuery)->count();
+        return $metricQuery;
+    }
 
-        // Item sales recap (quantity sold per product)
-        $itemSalesRecap = OrderItem::query()
-            ->select('product_name', DB::raw('SUM(quantity) as total_qty'), DB::raw('SUM(subtotal) as total_sales'))
-            ->when($dateFilter === 'today', function ($q) {
-                $q->whereHas('order', fn ($o) => $o->today());
-            })
-            ->when($channel !== 'all', function ($q) use ($channel) {
-                $q->whereHas('order', fn ($o) => $o->where('channel', $channel));
+    /**
+     * Apply date constraints to an Order query builder.
+     */
+    private function applyDateFilter($query, string $dateFilter): void
+    {
+        if ($dateFilter === 'today') {
+            $query->today();
+        } elseif ($dateFilter === 'yesterday') {
+            $query->whereDate('created_at', Carbon::yesterday());
+        } elseif ($dateFilter === 'week') {
+            $query->where('created_at', '>=', Carbon::today()->subDays(6)->startOfDay());
+        } elseif ($dateFilter === 'month') {
+            $query->where('created_at', '>=', Carbon::today()->startOfMonth());
+        } elseif ($dateFilter === 'all') {
+            // No filter applied
+        } else {
+            try {
+                $date = Carbon::parse($dateFilter)->toDateString();
+                $query->whereDate('created_at', $date);
+            } catch (\Throwable $th) {
+                $query->today();
+            }
+        }
+    }
+
+    /**
+     * Get itemized sales recap per product with revenue, cost and profit.
+     */
+    private function getItemSalesRecap(string $channel, string $dateFilter, ?string $search)
+    {
+        return OrderItem::query()
+            ->select(
+                'product_name',
+                DB::raw('SUM(quantity) as total_qty'),
+                DB::raw('SUM(subtotal) as total_sales'),
+                DB::raw('SUM(subtotal_cost) as total_cost'),
+                DB::raw('(SUM(subtotal) - SUM(subtotal_cost)) as total_profit')
+            )
+            ->whereHas('order', function ($q) use ($channel, $dateFilter, $search) {
+                if ($channel === 'ots') {
+                    $q->ots();
+                } elseif ($channel === 'po') {
+                    $q->po();
+                }
+                $this->applyDateFilter($q, $dateFilter);
+                if ($search) {
+                    $q->where(function ($sub) use ($search) {
+                        $sub->where('order_number', 'like', "%{$search}%")
+                            ->orWhere('customer_name', 'like', "%{$search}%")
+                            ->orWhere('customer_phone', 'like', "%{$search}%");
+                    });
+                }
             })
             ->groupBy('product_name')
             ->orderByDesc('total_qty')
             ->get();
+    }
 
-        $totalItemsSold = $itemSalesRecap->sum('total_qty');
+    /**
+     * Generate user-friendly Indonesian period label.
+     */
+    private function getDatePeriodLabel(string $dateFilter): string
+    {
+        if ($dateFilter === 'today') {
+            return 'Hari Ini ('.Carbon::today()->locale('id')->isoFormat('D MMMM Y').')';
+        } elseif ($dateFilter === 'yesterday') {
+            return 'Kemarin ('.Carbon::yesterday()->locale('id')->isoFormat('D MMMM Y').')';
+        } elseif ($dateFilter === 'week') {
+            return '7 Hari Terakhir ('.Carbon::today()->subDays(6)->locale('id')->isoFormat('D MMM').' - '.Carbon::today()->locale('id')->isoFormat('D MMM Y').')';
+        } elseif ($dateFilter === 'month') {
+            return 'Bulan Ini ('.Carbon::today()->locale('id')->isoFormat('MMMM Y').')';
+        } elseif ($dateFilter === 'all') {
+            return 'Semua Riwayat Transaksi (All Time)';
+        }
 
-        return view('pos.history', compact(
-            'orders',
-            'totalRevenue',
-            'totalCost',
-            'totalProfit',
-            'totalOrdersCount',
-            'totalItemsSold',
-            'itemSalesRecap',
-            'channel',
-            'dateFilter',
-            'search'
-        ));
+        try {
+            return 'Tanggal '.Carbon::parse($dateFilter)->locale('id')->isoFormat('D MMMM Y');
+        } catch (\Throwable $th) {
+            return 'Tanggal '.$dateFilter;
+        }
     }
 
     /**

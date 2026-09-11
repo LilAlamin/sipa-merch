@@ -19,7 +19,7 @@ test('settings page loads successfully with stock stats and product list', funct
     $response->assertOk();
     $response->assertViewIs('pos.settings');
     $response->assertViewHas('products', function ($products) {
-        return $products->count() === 8;
+        return $products->count() === 9;
     });
     $response->assertSee('Pengaturan');
     $response->assertSee('Stok Merchandise');

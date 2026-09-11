@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PosController::class, 'index'])->name('pos.index');
 Route::post('/checkout', [PosController::class, 'checkout'])->name('pos.checkout');
 Route::get('/history', [PosController::class, 'history'])->name('pos.history');
+Route::get('/history/export', [PosController::class, 'exportExcel'])->name('pos.history.export');
 Route::patch('/orders/{order}/status', [PosController::class, 'updateStatus'])->name('pos.orders.status');
 Route::get('/orders/{order}/invoice', [PosController::class, 'invoice'])->name('pos.invoice');
 
